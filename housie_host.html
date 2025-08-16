@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Housie - Host</title>
+  <style>
+    :root {
+      --bg: #f8fafc;          /* slate-50 */
+      --panel: #ffffff;       /* white */
+      --panel-2: #f1f5f9;     /* slate-100 */
+      --text: #0f172a;        /* slate-900 */
+      --muted: #475569;       /* slate-600 */
+      --accent: #16a34a;      /* green-600 */
+      --accent-2: #22c55e;    /* green-500 */
+      --warn: #dc2626;        /* red-600 */
+      --button: #e2e8f0;      /* slate-200 */
+      --button-hover: #cbd5e1;/* slate-300 */
+      --chip: #e2e8f0;        /* slate-200 */
+      --called: #dcfce7;      /* green-100 */
+      --called-ring: #16a34a; /* green-600 */
+      --last: #bbf7d0;        /* green-200 */
+      --border: #e5e7eb;      /* gray-200 */
+      --shadow: 0 8px 20px rgba(2, 6, 23, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: linear-gradient(135deg, #22c55e, #86efac);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+    h1 { font-size: 20px; margin: 0; letter-spacing: 0.2px; }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(2,6,23,0.02), transparent 180px), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+    .controls { padding: 12px; display: grid; gap: 12px; }
+
+    .btn {
+      background: var(--button);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      transition: transform 0.05s ease, background 0.2s ease, border-color 0.2s ease;
+      user-select: none;
+    }
+    .btn:hover { background: var(--button-hover); }
+    .btn:active { transform: translateY(1px); }
+    .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-primary { background: #16a34a; color: white; border-color: #16a34a; }
+    .btn-primary:hover { background: #15803d; border-color: #15803d; }
+
+    .btn-danger { background: #ef4444; color: white; border-color: #ef4444; }
+    .btn-danger:hover { background: #dc2626; border-color: #dc2626; }
+
+    .btn-big {
+      font-size: clamp(18px, 4.5vw, 24px);
+      padding: 18px 22px;
+      min-height: 64px;
+      border-radius: 14px;
+      width: 100%;
+    }
+
+    .stats {
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .big-number { display: flex; align-items: center; gap: 16px; }
+    .circle {
+      width: clamp(88px, 14vw, 128px);
+      height: clamp(88px, 14vw, 128px);
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #86efac, #22c55e);
+      display: grid; place-items: center;
+      border: 3px solid var(--called-ring);
+      box-shadow: 0 8px 16px rgba(22,163,74,0.25), inset 0 0 24px rgba(0,0,0,0.06);
+      font-size: clamp(34px, 6vw, 54px);
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: white;
+    }
+    .circle span { filter: drop-shadow(0 2px 0 rgba(0,0,0,0.15)); }
+
+    .meta { display: grid; gap: 8px; }
+    .count { font-size: 14px; color: var(--muted); }
+    .recent { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip {
+      background: var(--chip);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 700; min-width: 38px; text-align: center;
+    }
+
+    .board { padding: 12px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .cell {
+      position: relative;
+      aspect-ratio: 1/1;
+      min-width: 0;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: grid; place-items: center;
+      font-weight: 800;
+      color: #0f172a;
+      transition: background 0.2s ease, transform 0.08s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      user-select: none;
+    }
+    .cell span { font-size: clamp(12px, 2.3vw, 18px); }
+    .cell.called {
+      background: linear-gradient(180deg, rgba(22,163,74,0.08), transparent 60%), var(--called);
+      border-color: #86efac;
+      color: #065f46;
+      box-shadow: inset 0 0 0 2px rgba(34,197,94,0.25);
+    }
+    .cell.last {
+      outline: 2px solid var(--called-ring);
+      box-shadow: 0 0 0 4px rgba(34,197,94,0.25), inset 0 0 0 2px rgba(34,197,94,0.2);
+      transform: scale(1.02);
+    }
+
+    .footer {
+      padding: 10px 14px; color: var(--muted); font-size: 12px;
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    }
+
+    .kbd {
+      background: #f8fafc; border: 1px solid var(--border); border-bottom-color: #e2e8f0;
+      padding: 2px 6px; border-radius: 6px; font-weight: 700; color: #0f172a;
+    }
+
+    @media (max-width: 720px) {
+      .stats { grid-template-columns: 1fr; }
+      header { gap: 10px; }
+      .btn-big { min-height: 72px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>Housie – Host Console</h1>
+      </div>
+      <div class="row">
+        <button id="newGameBtn" class="btn btn-danger">New Game</button>
+      </div>
+    </header>
+
+    <section class="panel controls" aria-label="Controls">
+      <button id="nextBtn" class="btn btn-primary btn-big">Draw Next</button>
+      <div class="row">
+        <button id="undoBtn" class="btn">Undo (U)</button>
+      </div>
+    </section>
+
+    <section class="panel stats" aria-label="Status">
+      <div class="big-number">
+        <div class="circle" aria-live="polite" aria-atomic="true"><span id="current">–</span></div>
+        <div class="meta">
+          <div class="count" id="count">0 / 90 called</div>
+          <div class="recent" id="recent" aria-label="Recent numbers"></div>
+        </div>
+      </div>
+      <div class="actions"></div>
+    </section>
+
+    <section class="panel board" aria-label="Board">
+      <div id="grid" class="grid" role="grid" aria-label="Numbers 1 to 90"></div>
+    </section>
+
+    <div class="footer">
+      <div>
+        Keyboard: <span class="kbd">Space</span> Next, <span class="kbd">U</span> Undo, <span class="kbd">N</span> New Game
+      </div>
+      <div>
+        Tip: Players can use their own tickets and manually mark as you call the numbers.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Random helpers ---
+    function randomInt(maxExclusive) {
+      if (maxExclusive <= 0) return 0;
+      const cryptoObj = (window.crypto || window.msCrypto);
+      if (!cryptoObj || !cryptoObj.getRandomValues) {
+        // Fallback
+        return Math.floor(Math.random() * maxExclusive);
+      }
+      const range = maxExclusive;
+      const maxUint32 = 0xFFFFFFFF;
+      const bucketSize = Math.floor(maxUint32 / range);
+      const maxAllowed = bucketSize * range - 1;
+      const arr = new Uint32Array(1);
+      let x;
+      do { cryptoObj.getRandomValues(arr); x = arr[0]; } while (x > maxAllowed);
+      return Math.floor(x / bucketSize);
+    }
+
+    // --- State management ---
+    const STORAGE_KEY = 'housieHostState_v2';
+    const state = {
+      called: [],           // numbers shown as called, in order
+      usedSet: new Set(),   // numbers that should never appear again (includes undone ones)
+    };
+
+    function saveState() {
+      try {
+        const toSave = { called: state.called, used: Array.from(state.usedSet) };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      } catch (e) {}
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed.called) || !Array.isArray(parsed.used)) return false;
+        state.called = parsed.called.filter(n => Number.isInteger(n) && n >= 1 && n <= 90);
+        state.usedSet = new Set(parsed.used.filter(n => Number.isInteger(n) && n >= 1 && n <= 90));
+        return true;
+      } catch (e) { return false; }
+    }
+
+    // --- DOM refs ---
+    const newGameBtn = document.getElementById('newGameBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const undoBtn = document.getElementById('undoBtn');
+
+    const currentEl = document.getElementById('current');
+    const countEl = document.getElementById('count');
+    const recentEl = document.getElementById('recent');
+    const grid = document.getElementById('grid');
+
+    // Build the number grid once
+    const cellEls = Array(91).fill(null); // 1..90
+    function buildGrid() {
+      const frag = document.createDocumentFragment();
+      for (let n = 1; n <= 90; n++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.setAttribute('role', 'gridcell');
+        cell.setAttribute('aria-label', `Number ${n}`);
+        const span = document.createElement('span');
+        span.textContent = n;
+        cell.appendChild(span);
+        frag.appendChild(cell);
+        cellEls[n] = cell;
+      }
+      grid.appendChild(frag);
+    }
+
+    // Rendering
+    function render() {
+      const calledCount = state.called.length;
+      const lastNumber = calledCount > 0 ? state.called[calledCount - 1] : null;
+
+      // Update big number & count
+      currentEl.textContent = lastNumber ?? '–';
+      countEl.textContent = `${calledCount} / 90 called`;
+
+      // Update recent chips (last up to 8)
+      recentEl.innerHTML = '';
+      const recent = state.called.slice(Math.max(0, calledCount - 8), calledCount);
+      for (const n of recent) {
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.textContent = n;
+        recentEl.appendChild(chip);
+      }
+
+      // Update grid classes
+      for (let n = 1; n <= 90; n++) {
+        const cell = cellEls[n];
+        cell.classList.remove('called', 'last');
+      }
+      for (let i = 0; i < calledCount; i++) {
+        const n = state.called[i];
+        cellEls[n].classList.add('called');
+      }
+      if (lastNumber != null) {
+        cellEls[lastNumber].classList.add('last');
+      }
+
+      // Update buttons
+      nextBtn.disabled = state.usedSet.size >= 90;
+      undoBtn.disabled = calledCount <= 0;
+
+      saveState();
+    }
+
+    // Actions
+    function drawNext() {
+      if (state.usedSet.size >= 90) return;
+      // Build remaining pool (exclude used numbers); reseed every call by using secure randomness
+      const remaining = [];
+      for (let n = 1; n <= 90; n++) {
+        if (!state.usedSet.has(n)) remaining.push(n);
+      }
+      if (remaining.length === 0) return;
+      const idx = randomInt(remaining.length);
+      const next = remaining[idx];
+      state.usedSet.add(next);   // burn it so it won't appear again, even after undo
+      state.called.push(next);
+      render();
+    }
+
+    function undoLast() {
+      if (state.called.length <= 0) return;
+      const undone = state.called.pop();
+      // Intentionally DO NOT remove from usedSet to ensure it won't appear again per request
+      render();
+    }
+
+    function newGame() {
+      const confirmNeeded = state.called.length > 0 || state.usedSet.size > 0;
+      if (confirmNeeded && !confirm('Start a new game? Current progress will be cleared.')) return;
+      state.called = [];
+      state.usedSet = new Set();
+      render();
+    }
+
+    // Events
+    nextBtn.addEventListener('click', drawNext);
+    undoBtn.addEventListener('click', undoLast);
+    newGameBtn.addEventListener('click', newGame);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') { e.preventDefault(); drawNext(); }
+      else if (e.key === 'u' || e.key === 'U') { undoLast(); }
+      else if (e.key === 'n' || e.key === 'N') { newGame(); }
+    });
+
+    // Init
+    buildGrid();
+    loadState();
+    render();
+  </script>
+</body>
+</html>
