@@ -125,6 +125,21 @@
     }
     .circle span { filter: drop-shadow(0 2px 0 rgba(0,0,0,0.15)); }
 
+    /* Visual emphasis when a number lands */
+    .circle.pulse { animation: pulseRing 900ms ease-out; }
+    @keyframes pulseRing {
+      0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55), inset 0 0 24px rgba(0,0,0,0.06); transform: scale(1); }
+      70% { box-shadow: 0 0 0 14px rgba(34,197,94,0), inset 0 0 28px rgba(0,0,0,0.08); transform: scale(1.05); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0), inset 0 0 24px rgba(0,0,0,0.06); transform: scale(1); }
+    }
+
+    /* Subtle breathing while shuffling */
+    .circle.shuffling { animation: breathe 800ms ease-in-out infinite alternate; filter: saturate(1.05) brightness(1.02); }
+    @keyframes breathe {
+      0% { transform: scale(1); box-shadow: 0 8px 16px rgba(22,163,74,0.25), inset 0 0 24px rgba(0,0,0,0.06); }
+      100% { transform: scale(1.04); box-shadow: 0 10px 22px rgba(22,163,74,0.35), inset 0 0 28px rgba(0,0,0,0.08); }
+    }
+
     .meta { display: grid; gap: 8px; }
     .count { font-size: 14px; color: var(--muted); }
     .recent { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -135,7 +150,10 @@
       padding: 6px 10px;
       border-radius: 999px;
       font-weight: 700; min-width: 38px; text-align: center;
+      transition: box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
     }
+    /* Highlight the most recent chip */
+    .chip.last { background: #16a34a; color: white; border-color: #16a34a; box-shadow: 0 0 0 3px rgba(34,197,94,0.25); }
 
     .board { padding: 12px; }
     .grid {
@@ -168,6 +186,12 @@
       outline: 2px solid var(--called-ring);
       box-shadow: 0 0 0 4px rgba(34,197,94,0.25), inset 0 0 0 2px rgba(34,197,94,0.2);
       transform: scale(1.02);
+    }
+    /* Highlight for in-progress shuffle candidate */
+    .cell.peek {
+      outline: 2px dashed var(--called-ring);
+      box-shadow: 0 0 0 3px rgba(34,197,94,0.18);
+      background: linear-gradient(180deg, rgba(22,163,74,0.05), transparent 60%), #f9fff8;
     }
 
     .footer {
@@ -257,6 +281,12 @@
       usedSet: new Set(),   // numbers that should never appear again (includes undone ones)
     };
 
+    // Shuffle state
+    let isShuffling = false;
+    let shuffleIntervalId = null;
+    let shuffleTimeoutId = null;
+    let peekNumber = null;
+
     function saveState() {
       try {
         const toSave = { called: state.called, used: Array.from(state.usedSet) };
@@ -282,6 +312,7 @@
     const undoBtn = document.getElementById('undoBtn');
 
     const currentEl = document.getElementById('current');
+    const circleEl = currentEl.parentElement; // .circle
     const countEl = document.getElementById('count');
     const recentEl = document.getElementById('recent');
     const grid = document.getElementById('grid');
@@ -320,6 +351,7 @@
         const chip = document.createElement('div');
         chip.className = 'chip';
         chip.textContent = n;
+        if (n === lastNumber) chip.classList.add('last'); // highlight most recent
         recentEl.appendChild(chip);
       }
 
@@ -337,29 +369,83 @@
       }
 
       // Update buttons
-      nextBtn.disabled = state.usedSet.size >= 90;
-      undoBtn.disabled = calledCount <= 0;
+      nextBtn.disabled = isShuffling || state.usedSet.size >= 90;
+      undoBtn.disabled = isShuffling || calledCount <= 0;
+      newGameBtn.disabled = isShuffling ? true : false;
 
       saveState();
     }
 
-    // Actions
-    function drawNext() {
-      if (state.usedSet.size >= 90) return;
-      // Build remaining pool (exclude used numbers); reseed every call by using secure randomness
+    // Helpers
+    function getRemainingNumbers() {
       const remaining = [];
       for (let n = 1; n <= 90; n++) {
         if (!state.usedSet.has(n)) remaining.push(n);
       }
+      return remaining;
+    }
+
+    // Actions
+    function startShuffleThenDraw() {
+      if (isShuffling) return;
+      if (state.usedSet.size >= 90) return;
+
+      const remaining = getRemainingNumbers();
       if (remaining.length === 0) return;
-      const idx = randomInt(remaining.length);
-      const next = remaining[idx];
-      state.usedSet.add(next);   // burn it so it won't appear again, even after undo
-      state.called.push(next);
-      render();
+
+      isShuffling = true;
+      circleEl.classList.add('shuffling');
+      nextBtn.disabled = true;
+      undoBtn.disabled = true;
+      newGameBtn.disabled = true;
+
+      // Show rapidly changing candidate numbers from remaining for 3 seconds
+      const tickMs = 70; // speed of the shuffle ticks
+      const totalMs = 3000; // total shuffle duration
+
+      shuffleIntervalId = setInterval(() => {
+        const idx = randomInt(remaining.length);
+        const candidate = remaining[idx];
+        currentEl.textContent = candidate; // visual only; not committed
+        // Highlight this candidate in the grid while shuffling
+        if (peekNumber !== null && cellEls[peekNumber]) {
+          cellEls[peekNumber].classList.remove('peek');
+        }
+        peekNumber = candidate;
+        if (cellEls[candidate]) {
+          cellEls[candidate].classList.add('peek');
+        }
+      }, tickMs);
+
+      shuffleTimeoutId = setTimeout(() => {
+        // Stop shuffling
+        clearInterval(shuffleIntervalId);
+        shuffleIntervalId = null;
+        // Clear candidate highlight in grid
+        if (peekNumber !== null && cellEls[peekNumber]) {
+          cellEls[peekNumber].classList.remove('peek');
+          peekNumber = null;
+        }
+
+        // Choose the final number fairly from the current remaining pool
+        const idx = randomInt(remaining.length);
+        const next = remaining[idx];
+        state.usedSet.add(next);
+        state.called.push(next);
+
+        isShuffling = false;
+        circleEl.classList.remove('shuffling');
+
+        render();
+
+        // Emphasize landing
+        circleEl.classList.add('pulse');
+        setTimeout(() => circleEl.classList.remove('pulse'), 900);
+      }, totalMs);
     }
 
     function undoLast() {
+      if (isShuffling) return; // block during shuffle
       if (state.called.length <= 0) return;
       const undone = state.called.pop();
       // Intentionally DO NOT remove from usedSet to ensure it won't appear again per request
@@ -367,6 +453,7 @@
     }
 
     function newGame() {
+      if (isShuffling) return; // block during shuffle
       const confirmNeeded = state.called.length > 0 || state.usedSet.size > 0;
       if (confirmNeeded && !confirm('Start a new game? Current progress will be cleared.')) return;
       state.called = [];
@@ -375,15 +462,15 @@
     }
 
     // Events
-    nextBtn.addEventListener('click', drawNext);
+    nextBtn.addEventListener('click', startShuffleThenDraw);
     undoBtn.addEventListener('click', undoLast);
     newGameBtn.addEventListener('click', newGame);
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') { e.preventDefault(); drawNext(); }
-      else if (e.key === 'u' || e.key === 'U') { undoLast(); }
-      else if (e.key === 'n' || e.key === 'N') { newGame(); }
+      if (e.code === 'Space') { e.preventDefault(); if (!isShuffling) startShuffleThenDraw(); }
+      else if (e.key === 'u' || e.key === 'U') { if (!isShuffling) undoLast(); }
+      else if (e.key === 'n' || e.key === 'N') { if (!isShuffling) newGame(); }
     });
 
     // Init
